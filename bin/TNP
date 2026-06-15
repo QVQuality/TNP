@@ -177,6 +177,26 @@ def get_tetrad_residues(sequence):
 
 ####################################################################################################
 
+def calculate_pi(pdb_path):
+    pka_file = os.path.splitext(os.path.basename(pdb_path))[0] + ".pka"
+    try:
+        subprocess.run(["propka3", pdb_path], check=True, capture_output=True)
+        pi = None
+        with open(pka_file) as f:
+            for line in f:
+                if line.startswith("The pI is"):
+                    pi = float(line.split()[3].strip())
+                    break
+        return pi
+    except Exception as e:
+        print("WARNING: could not calculate isoelectric point: %s" % e)
+        return None
+    finally:
+        if os.path.exists(pka_file):
+            os.remove(pka_file)
+
+####################################################################################################
+
 
 # Main function that runs TNP on a sequence
 def main(heavy_name, heavy_sequence, h_scale, output, web, verbose=False):
@@ -229,6 +249,8 @@ def main(heavy_name, heavy_sequence, h_scale, output, web, verbose=False):
                     cmd.append("--verbose")
                     
                 subprocess.run(cmd, check=True)
+                # local debugging: comment out the previous line and uncomment this one
+                # shutil.copy("/home/mgiulini/TNP/model-662.pdb", f"{os.path.join(abbrev_name, abbrev_name)+'.pdb'}")
 
                 fo.write("NanoBodyBuilder2 (ImmuneBuilder) was able to generate a model for this sequence\n")
 
@@ -298,12 +320,18 @@ def main(heavy_name, heavy_sequence, h_scale, output, web, verbose=False):
     
 
             if verbose:
-                print(linedivide + "Finally, calculating surface hydrophobicity and charge properties for your nanobody at pH 7.4 (with salt-bridge correction)...\n\n")
+                print(linedivide + "Calculating surface hydrophobicity and charge properties for your nanobody at pH 7.4 (with salt-bridge correction)...\n\n")
 
             hydrophob_and_charge_dict = hydrophob_and_charge_calc(h_scale, 7.4, os.path.join(Model_data_loc, abbrev_name+"_NanoBodyBuilder2_Model.pdb"), "IG", "imgt", verbose=verbose)
 
             fo.write("TNP was able to calculate PSH, PPC and PNC scores for your model structure.\n")
 
+            # theoretical isoelectric point calculation with propka
+            if verbose:
+                print(linedivide + "Calculating theoretical isoelectric point")
+            
+            theoretical_pi = calculate_pi(os.path.join(Model_data_loc, abbrev_name+"_NanoBodyBuilder2_Model.pdb"))
+            print(f"theoretical_pi = {theoretical_pi}")
 
             ###############################################################################################################
 
@@ -315,6 +343,8 @@ def main(heavy_name, heavy_sequence, h_scale, output, web, verbose=False):
             nb_tnp_dictionary['PSH'] = hydrophob_and_charge_dict[h_scale]['Patch_Hydrophob_CDR']
             nb_tnp_dictionary['PPC'] = hydrophob_and_charge_dict[h_scale]['Patch_Pos_Charge_CDR']
             nb_tnp_dictionary['PNC'] = hydrophob_and_charge_dict[h_scale]['Patch_Neg_Charge_CDR']
+            nb_tnp_dictionary["Tetrad motif (hallmark residues)"] = tetrad_motif
+            nb_tnp_dictionary["Theoretical pI (propka3)"] = theoretical_pi
             
             nb_tnp_dictionary['Flags'] = { "L"     : assign_flag("L", total_imgt_cdr_length),
                                            "L3"    : assign_flag("L3", imgt_cdr3_length),
