@@ -60,6 +60,7 @@ In the package directory:
 - [NanoBodyBuilder2](https://github.com/oxpig/ImmuneBuilder)
 - [DSSP](https://anaconda.org/salilab/dssp)
 - biopython 1.77
+- [propka3](https://github.com/jensengroup/propka)
 
 
 ## Usage
