@@ -152,17 +152,21 @@ def get_liabilities_from_pdb(input_pdb, scheme="imgt", save=False, restrict_spec
             heavy_sequence, light_sequence = model_sequences[0][1], model_sequences[1][1]
         except:
             heavy_sequence, light_sequence = model_sequences[0][1], ''
-        liabilities[scheme], n_liabilities = get_liabilities(heavy_sequence,
+        # structure-based liabilities
+        # not all the liabilities should be extracted from sequence
+        unpaired_cysteines = get_unpaired_cysteines(structure)
+        liabilities[scheme]= unpaired_cysteines
+        n_liabilities = len(unpaired_cysteines)
+
+        seq_liabilities, seq_n_liabilities = get_liabilities(heavy_sequence,
                                                             light_sequence,
                                                             scheme=scheme,
                                                             save=save,
                                                             outfile= os.path.join(output_dir,"sequence_liabilities.csv"),
                                                             restrict_species=restrict_species)
-        # structure-based liabilities
-        # not all the liabilities should be extracted from sequence
-        unpaired_cysteines = get_unpaired_cysteines(structure)
-        liabilities[scheme].extend(unpaired_cysteines)
-        n_liabilities += len(unpaired_cysteines)
+        
+        liabilities[scheme].extend(seq_liabilities)
+        n_liabilities += seq_n_liabilities
     return liabilities, n_liabilities
 
 def get_bfactors_from_pdb(input_pdb):
@@ -390,7 +394,6 @@ def get_modelling_details(input_pdb, type="", scheme="imgt", save=False):
         pdb_cdr_ranges = get_cdr_ranges_from_pdb(input_pdb, type=type, scheme=scheme, definition='all')
         pdb_bfactors_per_region = get_bfactors_from_pdb_per_region(input_pdb, type='nanobody')
         pdb_dssp_output = run_dssp(input_pdb)
-
         # NOTE updated here to make sure liabilities included in json for nanobodies
         modelling_details.update({'heavy_numbering': heavy_numbering,
                                   'sequence_liabilities': pdb_liabilities[scheme],
@@ -408,7 +411,7 @@ def get_modelling_details(input_pdb, type="", scheme="imgt", save=False):
 
     else:
         print("ERROR: Not a valid model 'type'. Options are: 'antibody', 'nanobody', 'tcr'")
-                              
+
     modelling_details.update(pdb_cdr_ranges)
     modelling_details.update(pdb_dssp_output)
     modelling_details.update({'prediction_scores_per_region': pdb_bfactors_per_region})
