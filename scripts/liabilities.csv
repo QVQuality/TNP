@@ -1,5 +1,5 @@
 # Define liabilities, name, region(s), regex motif
-Unpaired Cys (C),fv,C
+# Unpaired Cys (C),fv,C
 N-linked glycosylation (NXS/T X not P),fv,N[^P][ST]
 Met oxidation (M),cdrs;verniers,M
 Trp oxidation (W),cdrs;verniers,W

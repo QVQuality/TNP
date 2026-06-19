@@ -136,7 +136,6 @@ def get_liabilities(heavy_sequence, light_sequence, scheme="imgt", save=False, o
                 if stripped[0] != "#":
                     name, region, regex = stripped.split(",")
                     liabilities.append( [name, region.split(";"), re.compile( regex ) ] )
-
     # annotate_sequences deals with if nanobody
     heavy_numbered, light_numbered, hchtype, lchtype = annotate_sequences( heavy_sequence, light_sequence, scheme=scheme, restrict_species=restrict_species)
                 
@@ -186,8 +185,6 @@ def get_liabilities(heavy_sequence, light_sequence, scheme="imgt", save=False, o
                     # Now find whether we care about it using the rules of the scoring regions.   
                     start, end = hit.start(), hit.end()-1         
                     pos_start, pos_end = i2p[chain][start], i2p[chain][end]
-                    if liability == "Unpaired Cys (C)" and pos_start in [(23, " "),(104, " ")]: # ignore the known cysteines.
-                        continue
                     if acceptor_obj.accept( pos_start, chain ):
                         if liability == "N-terminal glutamate (VH and VL) (E)": # requires both heavy and light chain
                             if chain=="L" and termHglut:
@@ -217,8 +214,7 @@ def get_liabilities(heavy_sequence, light_sequence, scheme="imgt", save=False, o
                 for i in range( start , end+1 ):
                     print(",".join([chain, "%d%s"%(i2pa[chain][i][0]), i2pa[chain][i][1], liability]), file=lfile)
 
-
-    return found_liabilities, len(liabilities)
+    return found_liabilities, len(found_liabilities)
 
 
 # create csv of liabilities and their frequency
@@ -226,7 +222,7 @@ def make_liabilities_csv():
     """Function to regenerate liabilities.csv file if unavailable in the same dir"""
 
     content = ("# Define liabilities, name, region(s), regex motif\n"
-            "Unpaired Cys (C),fv,C\n"
+            #"Unpaired Cys (C),fv,C\n"
             "N-linked glycosylation (NXS/T X not P),fv,N[^P][ST]\n"
             "Met oxidation (M),cdrs;verniers,M\n"
             "Trp oxidation (W),cdrs;verniers,W\n"

@@ -88,6 +88,38 @@ def get_sequences_from_pdb(input_pdb):
 #         with open(output_structure_file, 'w') as out:
 #             out.write(s._get_output_string(select_all(), 1)[0])
 
+def get_unpaired_cysteines(structure):
+    """
+    Check cysteine pairing via disulfide bonds in the structure.
+    Returns unpaired cysteines as a structural liability.
+    """
+    SG_DIST_CUTOFF = 2.5  # Angstroms, typical S-S bond length (may have to be relaxed)
+
+    cys_residues = []
+    for model in structure:
+        for chain in model:
+            for res_idx, residue in enumerate(chain):
+                if residue.resname == 'CYS' and 'SG' in residue:
+                    cys_residues.append((chain.id, residue, res_idx, residue['SG']))
+    paired = set()
+    for i in range(len(cys_residues)):
+        for j in range(i + 1, len(cys_residues)):
+            _, _, _, sg_i = cys_residues[i]
+            _, _, _, sg_j = cys_residues[j]
+            if sg_i - sg_j <= SG_DIST_CUTOFF:
+                paired.add(i)
+                paired.add(j)
+    
+    # this is for consistency with the other format
+    unpaired_cys = [
+        ['Unpaired Cys (C)', res_idx, res_idx, [residue.get_id()[1], ' '], [residue.get_id()[1], ' '], 'H', 0]
+        for i, (chain_id, residue, res_idx, _) in enumerate(cys_residues)
+        if i not in paired
+    ]
+
+    return unpaired_cys
+
+
 def get_liabilities_from_pdb(input_pdb, scheme="imgt", save=False, restrict_species=True):
     """
     Get numberings for any or all available schemes
@@ -120,13 +152,21 @@ def get_liabilities_from_pdb(input_pdb, scheme="imgt", save=False, restrict_spec
             heavy_sequence, light_sequence = model_sequences[0][1], model_sequences[1][1]
         except:
             heavy_sequence, light_sequence = model_sequences[0][1], ''
-        liabilities[scheme], n_liabilities = get_liabilities(heavy_sequence,
+        # structure-based liabilities
+        # not all the liabilities should be extracted from sequence
+        unpaired_cysteines = get_unpaired_cysteines(structure)
+        liabilities[scheme]= unpaired_cysteines
+        n_liabilities = len(unpaired_cysteines)
+
+        seq_liabilities, seq_n_liabilities = get_liabilities(heavy_sequence,
                                                             light_sequence,
                                                             scheme=scheme,
                                                             save=save,
                                                             outfile= os.path.join(output_dir,"sequence_liabilities.csv"),
                                                             restrict_species=restrict_species)
-
+        
+        liabilities[scheme].extend(seq_liabilities)
+        n_liabilities += seq_n_liabilities
     return liabilities, n_liabilities
 
 def get_bfactors_from_pdb(input_pdb):
@@ -354,7 +394,6 @@ def get_modelling_details(input_pdb, type="", scheme="imgt", save=False):
         pdb_cdr_ranges = get_cdr_ranges_from_pdb(input_pdb, type=type, scheme=scheme, definition='all')
         pdb_bfactors_per_region = get_bfactors_from_pdb_per_region(input_pdb, type='nanobody')
         pdb_dssp_output = run_dssp(input_pdb)
-
         # NOTE updated here to make sure liabilities included in json for nanobodies
         modelling_details.update({'heavy_numbering': heavy_numbering,
                                   'sequence_liabilities': pdb_liabilities[scheme],
@@ -372,7 +411,7 @@ def get_modelling_details(input_pdb, type="", scheme="imgt", save=False):
 
     else:
         print("ERROR: Not a valid model 'type'. Options are: 'antibody', 'nanobody', 'tcr'")
-                              
+
     modelling_details.update(pdb_cdr_ranges)
     modelling_details.update(pdb_dssp_output)
     modelling_details.update({'prediction_scores_per_region': pdb_bfactors_per_region})

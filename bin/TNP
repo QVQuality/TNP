@@ -249,9 +249,9 @@ def main(heavy_name, heavy_sequence, h_scale, output, web, verbose=False):
                     cmd.append("--verbose")
                     
                 subprocess.run(cmd, check=True)
-                # local debugging: comment out the previous line and uncomment this one
-                # shutil.copy("/home/mgiulini/TNP/model-662.pdb", f"{os.path.join(abbrev_name, abbrev_name)+'.pdb'}")
-
+                # to avoid computing structures etc., comment the previous line and uncomment the following
+                # changing the path to a local model
+                # shutil.copy("/home/mgiulini/TNP/8ew6-model-unp.pdb", os.path.join(abbrev_name, abbrev_name)+".pdb")
                 fo.write("NanoBodyBuilder2 (ImmuneBuilder) was able to generate a model for this sequence\n")
 
                 try:
