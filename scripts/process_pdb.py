@@ -88,6 +88,38 @@ def get_sequences_from_pdb(input_pdb):
 #         with open(output_structure_file, 'w') as out:
 #             out.write(s._get_output_string(select_all(), 1)[0])
 
+def get_unpaired_cysteines(structure):
+    """
+    Check cysteine pairing via disulfide bonds in the structure.
+    Returns unpaired cysteines as a structural liability.
+    """
+    SG_DIST_CUTOFF = 2.5  # Angstroms, typical S-S bond length (may have to be relaxed)
+
+    cys_residues = []
+    for model in structure:
+        for chain in model:
+            for res_idx, residue in enumerate(chain):
+                if residue.resname == 'CYS' and 'SG' in residue:
+                    cys_residues.append((chain.id, residue, res_idx, residue['SG']))
+    paired = set()
+    for i in range(len(cys_residues)):
+        for j in range(i + 1, len(cys_residues)):
+            _, _, _, sg_i = cys_residues[i]
+            _, _, _, sg_j = cys_residues[j]
+            if sg_i - sg_j <= SG_DIST_CUTOFF:
+                paired.add(i)
+                paired.add(j)
+    
+    # this is for consistency with the other format
+    unpaired_cys = [
+        ['Unpaired Cys (C)', res_idx, res_idx, [residue.get_id()[1], ' '], [residue.get_id()[1], ' '], 'H', 0]
+        for i, (chain_id, residue, res_idx, _) in enumerate(cys_residues)
+        if i not in paired
+    ]
+
+    return unpaired_cys
+
+
 def get_liabilities_from_pdb(input_pdb, scheme="imgt", save=False, restrict_species=True):
     """
     Get numberings for any or all available schemes
@@ -126,7 +158,11 @@ def get_liabilities_from_pdb(input_pdb, scheme="imgt", save=False, restrict_spec
                                                             save=save,
                                                             outfile= os.path.join(output_dir,"sequence_liabilities.csv"),
                                                             restrict_species=restrict_species)
-
+        # structure-based liabilities
+        # not all the liabilities should be extracted from sequence
+        unpaired_cysteines = get_unpaired_cysteines(structure)
+        liabilities[scheme].extend(unpaired_cysteines)
+        n_liabilities += len(unpaired_cysteines)
     return liabilities, n_liabilities
 
 def get_bfactors_from_pdb(input_pdb):
