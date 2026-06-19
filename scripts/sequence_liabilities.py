@@ -214,8 +214,7 @@ def get_liabilities(heavy_sequence, light_sequence, scheme="imgt", save=False, o
                 for i in range( start , end+1 ):
                     print(",".join([chain, "%d%s"%(i2pa[chain][i][0]), i2pa[chain][i][1], liability]), file=lfile)
 
-
-    return found_liabilities, len(liabilities)
+    return found_liabilities, len(found_liabilities)
 
 
 # create csv of liabilities and their frequency
